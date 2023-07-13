@@ -68,6 +68,10 @@ class AcaiaScale():
             return int(time.time() - self._timer_start)
         else:
             return int(self._timer_stop - self._timer_start)
+        
+
+    def new_client_from_ble_device(self, BLED: BLEDevice) -> None:
+        self._client = BleakClient(BLED)
 
 
     async def _write_msg(self, char_id: str, payload: bytearray) -> None:
