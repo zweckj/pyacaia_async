@@ -106,7 +106,7 @@ class AcaiaScale():
             except asyncio.CancelledError:
                 return
             except Exception as ex:
-                _LOGGER.error("Error writing to device: %s", ex)
+                _LOGGER.debug("Error writing to device: %s", ex)
                 return
 
 
@@ -149,7 +149,7 @@ class AcaiaScale():
             except asyncio.CancelledError:
                 return
             except Exception as ex:
-                _LOGGER.error("Error sending heartbeat: %s", ex)
+                _LOGGER.debug("Error sending heartbeat: %s", ex)
                 return
 
     async def disconnect(self) -> None:
