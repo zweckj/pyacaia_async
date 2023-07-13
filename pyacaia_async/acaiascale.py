@@ -43,7 +43,8 @@ class AcaiaScale():
 
     @classmethod
     async def create(cls, mac: str = None, bleDevice: BLEDevice = None, isPyxisStyle: bool=False, callback = None) -> AcaiaScale:
-        """Create a new scale."""
+        """Create a new scale."""  
+        self = cls(mac, isPyxisStyle)
 
         if bleDevice:
             self._client = BleakClient(bleDevice)
@@ -52,7 +53,6 @@ class AcaiaScale():
         else:
             raise ValueError("Either mac or bleDevice must be specified")
         
-        self = cls(mac, isPyxisStyle)
         await self.connect(callback)
         asyncio.create_task(self._send_heartbeats())
         asyncio.create_task(self._process_queue())
