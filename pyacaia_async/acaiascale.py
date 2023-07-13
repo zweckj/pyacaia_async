@@ -48,9 +48,9 @@ class AcaiaScale():
             raise ValueError("Either mac or bleDevice must be specified")
 
     @classmethod
-    async def create(cls, mac: str = None, bleDevice: BLEDevice = None, callback = None) -> AcaiaScale:
+    async def create(cls, mac: str = None, bleDevice: BLEDevice = None, isPyxisStyle: bool=False, callback = None) -> AcaiaScale:
         """Create a new scale."""
-        self = cls(mac, bleDevice)
+        self = cls(mac, bleDevice, isPyxisStyle)
         await self.connect(callback)
         asyncio.create_task(self._send_heartbeats())
         asyncio.create_task(self._process_queue())
