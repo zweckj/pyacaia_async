@@ -20,6 +20,7 @@ class AcaiaScale():
     def __init__(self, mac: str = None, isPyxisStyle: bool=False):
         """Initialize the scale."""
     
+        self._mac = mac
         self._isPyxisStyle = isPyxisStyle
 
         self._client = None
@@ -29,7 +30,6 @@ class AcaiaScale():
         self._timer_running = False
         self._timer_start = None
         self._timer_stop = None
-        self._mac = mac
 
         self._queue = asyncio.Queue()
 
