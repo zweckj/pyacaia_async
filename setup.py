@@ -23,7 +23,7 @@ setuptools.setup(
         "Programming Language :: Python :: Implementation :: CPython",
     ],
     packages=setuptools.find_packages(),
-    install_requires=["aiohttp>=3.8.4", "bleak>=0.20.2"],
+    install_requires=["bleak>=0.20.2", "asyncio>=3.4.3"],
     package_data={
         "license": ["LICENSE"],
     },
