@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class AcaiaScale():
 
-    def __init__(self, mac: str = None, bleDevice: BLEDevice = None, isPyxisStyle: bool=False):
+    def __init__(self, mac: str = None, isPyxisStyle: bool=False):
         """Initialize the scale."""
     
         self._isPyxisStyle = isPyxisStyle
@@ -29,6 +29,7 @@ class AcaiaScale():
         self._timer_running = False
         self._timer_start = None
         self._timer_stop = None
+        self._mac = mac
 
         self._queue = asyncio.Queue()
 
@@ -40,17 +41,18 @@ class AcaiaScale():
             "heartbeat": encode(0, [2,0])
         }
 
+    @classmethod
+    async def create(cls, mac: str = None, bleDevice: BLEDevice = None, isPyxisStyle: bool=False, callback = None) -> AcaiaScale:
+        """Create a new scale."""
+
         if bleDevice:
             self._client = BleakClient(bleDevice)
         elif mac:
             self._client = BleakClient(mac)
         else:
             raise ValueError("Either mac or bleDevice must be specified")
-
-    @classmethod
-    async def create(cls, mac: str = None, bleDevice: BLEDevice = None, isPyxisStyle: bool=False, callback = None) -> AcaiaScale:
-        """Create a new scale."""
-        self = cls(mac, bleDevice, isPyxisStyle)
+        
+        self = cls(mac, isPyxisStyle)
         await self.connect(callback)
         asyncio.create_task(self._send_heartbeats())
         asyncio.create_task(self._process_queue())
