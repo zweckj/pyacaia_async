@@ -149,4 +149,4 @@ def notification_handler(sender, data) -> None:
     if isinstance(msg, Settings):
         print(f"Battery: {msg.battery}")
     elif isinstance(msg, Message):
-        pass
+        print(f"Weight: {msg.value}")

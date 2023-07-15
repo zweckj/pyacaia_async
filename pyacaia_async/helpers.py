@@ -67,16 +67,6 @@ def encodeId(isPyxisStyle=False) -> bytearray:
     return encode(11,payload)
 
 
-def encodeEventData(payload) -> bytearray:
-    bytes= bytearray(len(payload)+1)
-    bytes[0] = len(payload) + 1
-
-    for i in range(len(payload)):
-        bytes[i+1]=payload[i] & 0xff
-
-    return encode(12,bytes)
-
-
 def encodeNotificationRequest() -> bytearray:
     payload=[
     	0,  # weight
@@ -88,4 +78,10 @@ def encodeNotificationRequest() -> bytearray:
     	3,  # key
     	4   # setting
     ]
-    return encodeEventData(payload)
+    bytes= bytearray(len(payload)+1)
+    bytes[0] = len(payload) + 1
+
+    for i in range(len(payload)):
+        bytes[i+1]=payload[i] & 0xff
+
+    return encode(12,bytes)

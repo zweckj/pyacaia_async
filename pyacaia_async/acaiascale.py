@@ -10,7 +10,7 @@ from .const import (
     HEARTBEAT_INTERVAL,
     NOTIFY_CHAR_ID,
 )
-from .helpers import encode, encodeId
+from .helpers import encode, encodeId, encodeNotificationRequest
 from .exceptions import AcaiaDeviceNotFound, AcaiaError
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,7 +38,9 @@ class AcaiaScale():
             "startTimer": encode(13, [0,0]),
             "stopTimer": encode(13, [0,2]),
             "resetTimer": encode(13, [0,1]),
-            "heartbeat": encode(0, [2,0])
+            "heartbeat": encode(0, [2,0]),
+            "auth": encodeId(isPyxisStyle=isPyxisStyle),
+            "notificationRequest": encodeNotificationRequest(),
         }
 
     @classmethod
@@ -121,7 +123,7 @@ class AcaiaScale():
             await self._client.connect()
             self._connected = True
             _LOGGER.debug("Connected to Acaia Scale.")
-            await self._write_msg(DEFAULT_CHAR_ID, encodeId(isPyxisStyle=self._isPyxisStyle))
+            await self._write_msg(DEFAULT_CHAR_ID, self.msg_types["auth"])
             await asyncio.sleep(0.5) # wait for the scale to process the id
             if callback is not None:
                 await self._client.start_notify(NOTIFY_CHAR_ID, callback)
@@ -133,10 +135,10 @@ class AcaiaScale():
             raise AcaiaError("Error connecting to device") from ex
         
 
-    async def send_id(self) -> None:
+    async def send_notification_request(self) -> None:
         await self._queue.put((
                 DEFAULT_CHAR_ID,
-                encodeId(isPyxisStyle=self._isPyxisStyle)
+                self.msg_types["notificationRequest"]
         ))
 
 
