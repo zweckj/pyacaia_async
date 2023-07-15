@@ -9,6 +9,7 @@ from .const import (
     DEFAULT_CHAR_ID,
     HEARTBEAT_INTERVAL,
     NOTIFY_CHAR_ID,
+    OLD_STYLE_CHAR_ID,
 )
 from .helpers import encode, encodeId, encodeNotificationRequest
 from .exceptions import AcaiaDeviceNotFound, AcaiaError
@@ -17,11 +18,11 @@ _LOGGER = logging.getLogger(__name__)
 
 class AcaiaScale():
 
-    def __init__(self, mac: str = None, isPyxisStyle: bool=False):
+    def __init__(self, mac: str = None, is_new_style_scale: bool=True):
         """Initialize the scale."""
     
         self._mac = mac
-        self._isPyxisStyle = isPyxisStyle
+        self._is_new_style_scale = is_new_style_scale
 
         self._client = None
         self._connected = False
@@ -39,14 +40,18 @@ class AcaiaScale():
             "stopTimer": encode(13, [0,2]),
             "resetTimer": encode(13, [0,1]),
             "heartbeat": encode(0, [2,0]),
-            "auth": encodeId(isPyxisStyle=isPyxisStyle),
+            "auth": encodeId(isPyxisStyle=is_new_style_scale),
             "notificationRequest": encodeNotificationRequest(),
         }
 
+        if not is_new_style_scale:
+            # for old style scales, the default char id is the same as the notify char id
+            DEFAULT_CHAR_ID = NOTIFY_CHAR_ID = OLD_STYLE_CHAR_ID
+
     @classmethod
-    async def create(cls, mac: str = None, bleDevice: BLEDevice = None, isPyxisStyle: bool=False, callback = None) -> AcaiaScale:
+    async def create(cls, mac: str = None, bleDevice: BLEDevice = None, is_new_style_scale: bool=True, callback = None) -> AcaiaScale:
         """Create a new scale."""  
-        self = cls(mac, isPyxisStyle)
+        self = cls(mac, is_new_style_scale)
 
         if bleDevice:
             self._client = BleakClient(bleDevice)
@@ -73,10 +78,12 @@ class AcaiaScale():
         
 
     def new_client_from_ble_device(self, BLED: BLEDevice) -> None:
+        """ Create a new client from a BLEDevice, used for Home Assistant"""
         self._client = BleakClient(BLED)
 
 
     async def _write_msg(self, char_id: str, payload: bytearray) -> None:
+        """ wrapper for writing to the device."""
         try:
             if not self._connected:
                 return
@@ -95,6 +102,7 @@ class AcaiaScale():
         
 
     async def _process_queue(self) -> None:
+        """ Task to process the queue in the background. """
         while True:
             try:
                 if not self._connected:
@@ -119,15 +127,20 @@ class AcaiaScale():
 
 
     async def connect(self, callback = None) -> None:
+        """ Initiate connection to the scale """
         try:
             await self._client.connect()
             self._connected = True
             _LOGGER.debug("Connected to Acaia Scale.")
-            await self._write_msg(DEFAULT_CHAR_ID, self.msg_types["auth"])
-            await asyncio.sleep(0.5) # wait for the scale to process the id
+
             if callback is not None:
                 await self._client.start_notify(NOTIFY_CHAR_ID, callback)
                 await asyncio.sleep(0.5)
+
+            await self.auth()
+
+            if callback is not None:
+                await self.send_weight_notification_request()
 
         except BleakDeviceNotFoundError as ex:
             raise AcaiaDeviceNotFound("Device not found") from ex
@@ -135,7 +148,16 @@ class AcaiaScale():
             raise AcaiaError("Error connecting to device") from ex
         
 
-    async def send_notification_request(self) -> None:
+    async def auth(self) -> None:
+        """ Send auth message to scale, if subscribed to notifications returns Settings object """
+        await self._queue.put((
+                DEFAULT_CHAR_ID,
+                self.msg_types["auth"]
+        ))
+
+    async def send_weight_notification_request(self) -> None:
+        """ Tell the scale to send weight notifications """
+
         await self._queue.put((
                 DEFAULT_CHAR_ID,
                 self.msg_types["notificationRequest"]
@@ -143,6 +165,7 @@ class AcaiaScale():
 
 
     async def _send_heartbeats(self) -> None:
+        """ Task to send heartbeats in the background. """
         while True:
             try:
                 if not self._connected or self._disconnecting:
@@ -161,6 +184,7 @@ class AcaiaScale():
                 return
 
     async def disconnect(self) -> None:
+        """ Clean disconnect from the scale """
         try:
             _LOGGER.debug("Disconnecting from scale.")
             self._disconnecting = True

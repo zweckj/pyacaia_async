@@ -148,5 +148,6 @@ def notification_handler(sender, data) -> None:
     msg = decode(data)[0]
     if isinstance(msg, Settings):
         print(f"Battery: {msg.battery}")
+        print(f"Units: {msg.units}")
     elif isinstance(msg, Message):
         print(f"Weight: {msg.value}")
