@@ -164,7 +164,7 @@ class AcaiaScale():
         ))
 
 
-    async def _send_heartbeats(self) -> None:
+    async def _send_heartbeats(self, interval:int=HEARTBEAT_INTERVAL) -> None:
         """ Task to send heartbeats in the background. """
         while True:
             try:
@@ -176,7 +176,7 @@ class AcaiaScale():
                         DEFAULT_CHAR_ID, 
                         self.msg_types["heartbeat"]
                     ))
-                await asyncio.sleep(HEARTBEAT_INTERVAL)
+                await asyncio.sleep(interval)
             except asyncio.CancelledError:
                 return
             except Exception as ex:
