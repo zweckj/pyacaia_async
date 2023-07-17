@@ -197,6 +197,7 @@ class AcaiaScale():
 
 
     async def tare(self) -> None:
+        await self.auth()
         await self._queue.put((
                 DEFAULT_CHAR_ID, 
                 self.msg_types["tare"]
@@ -204,6 +205,7 @@ class AcaiaScale():
 
 
     async def startStopTimer(self) -> None:
+        await self.auth()
         if not self._timer_running:
             await self._queue.put((      
                     DEFAULT_CHAR_ID, 
@@ -222,6 +224,7 @@ class AcaiaScale():
 
 
     async def resetTimer(self) -> None:
+        await self.auth()
         await self._queue.put((
                 DEFAULT_CHAR_ID, 
                 self.msg_types["resetTimer"]
