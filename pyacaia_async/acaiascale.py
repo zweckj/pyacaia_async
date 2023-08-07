@@ -62,7 +62,7 @@ class AcaiaScale():
             raise ValueError("Either mac or bleDevice must be specified")
         
         await self.connect(callback)
-        asyncio.create_task(self._send_heartbeats(interval=HEARTBEAT_INTERVAL if is_new_style_scale else 1, new_style_heartbeat=is_new_style_scale))
+        asyncio.create_task(self._send_heartbeats(interval=HEARTBEAT_INTERVAL if not is_new_style_scale else 1, new_style_heartbeat=is_new_style_scale))
         asyncio.create_task(self._process_queue())
         return self
 
