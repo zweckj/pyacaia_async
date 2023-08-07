@@ -18,13 +18,13 @@ async def main():
     print("stopping Timer...")
     await scale.startStopTimer()
 
-    await asyncio.sleep(20)
+    await asyncio.sleep(5)
     print("resetting Timer...")
     await scale.resetTimer()
-    await asyncio.sleep(20)
+    await asyncio.sleep(5)
     print("starting Timer...")
     await scale.startStopTimer()
-    await asyncio.sleep(20)
+    await asyncio.sleep(30)
     print("stopping Timer...")
     await scale.startStopTimer()
 

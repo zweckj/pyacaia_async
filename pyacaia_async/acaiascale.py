@@ -40,6 +40,7 @@ class AcaiaScale():
             "stopTimer": encode(13, [0,2]),
             "resetTimer": encode(13, [0,1]),
             "heartbeat": encode(0, [2,0]),
+            "getSettings": encode(6, [0]*16),
             "auth": encodeId(isPyxisStyle=is_new_style_scale),
             "notificationRequest": encodeNotificationRequest(),
         }
@@ -61,7 +62,7 @@ class AcaiaScale():
             raise ValueError("Either mac or bleDevice must be specified")
         
         await self.connect(callback)
-        asyncio.create_task(self._send_heartbeats())
+        asyncio.create_task(self._send_heartbeats(interval=HEARTBEAT_INTERVAL if is_new_style_scale else 1, new_style_heartbeat=is_new_style_scale))
         asyncio.create_task(self._process_queue())
         return self
 
@@ -116,8 +117,9 @@ class AcaiaScale():
                     return
                 
                 char_id, payload = await self._queue.get()
-                await self._write_msg(char_id, payload)   
+                await self._write_msg(char_id, payload)
                 self._queue.task_done()
+                await asyncio.sleep(0.1)
 
             except asyncio.CancelledError:
                 return
@@ -164,7 +166,7 @@ class AcaiaScale():
         ))
 
 
-    async def _send_heartbeats(self, interval:int=HEARTBEAT_INTERVAL) -> None:
+    async def _send_heartbeats(self, interval:int=HEARTBEAT_INTERVAL, new_style_heartbeat:bool=False) -> None:
         """ Task to send heartbeats in the background. """
         while True:
             try:
@@ -172,9 +174,21 @@ class AcaiaScale():
                     return
                 
                 _LOGGER.debug("Sending heartbeat.")
+                if new_style_heartbeat:
+                    await self._queue.put((
+                        DEFAULT_CHAR_ID, 
+                        self.msg_types["auth"]
+                    ))
+
                 await self._queue.put((
                         DEFAULT_CHAR_ID, 
                         self.msg_types["heartbeat"]
+                    ))
+                
+                if new_style_heartbeat:
+                    await self._queue.put((
+                        DEFAULT_CHAR_ID, 
+                        self.msg_types["getSettings"]
                     ))
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
@@ -197,7 +211,6 @@ class AcaiaScale():
 
 
     async def tare(self) -> None:
-        await self.auth()
         await self._queue.put((
                 DEFAULT_CHAR_ID, 
                 self.msg_types["tare"]
@@ -205,8 +218,8 @@ class AcaiaScale():
 
 
     async def startStopTimer(self) -> None:
-        await self.auth()
         if not self._timer_running:
+            _LOGGER.debug('Sending "start" message.')
             await self._queue.put((      
                     DEFAULT_CHAR_ID, 
                     self.msg_types["startTimer"]
@@ -215,6 +228,7 @@ class AcaiaScale():
             if not self._timer_start:
                 self._timer_start = time.time()
         else:
+            _LOGGER.debug('Sending "stop" message.')
             await self._queue.put((
                     DEFAULT_CHAR_ID, 
                     self.msg_types["stopTimer"]
@@ -224,7 +238,6 @@ class AcaiaScale():
 
 
     async def resetTimer(self) -> None:
-        await self.auth()
         await self._queue.put((
                 DEFAULT_CHAR_ID, 
                 self.msg_types["resetTimer"]
