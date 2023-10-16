@@ -40,7 +40,7 @@ class Message(object):
                 self.button='start'
                 self.value=self._decode_weight(payload[2:])
                 _LOGGER.debug('start (weight: '+str(self.value)+')')
-            elif payload[0]==10 and payload[1]==7:
+            elif (payload[0]==10 and payload[1]==7) or (payload[0]==10 and payload[1]==5):
                 self.button='stop'
                 self.time = self._decode_time(payload[2:])
                 self.value = self._decode_weight(payload[6:])
