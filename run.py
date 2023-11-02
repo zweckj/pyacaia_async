@@ -3,6 +3,7 @@ import asyncio
 from pyacaia_async import AcaiaScale
 from pyacaia_async.decode import notification_handler
 
+
 async def main():
     scale = await AcaiaScale.create(mac="11:22:33:44:55", callback=notification_handler)
 
@@ -11,23 +12,22 @@ async def main():
 
     await asyncio.sleep(1)
     print("starting Timer...")
-    await scale.startStopTimer()
-    
+    await scale.start_stop_timer()
+
     await asyncio.sleep(21)
 
     print("stopping Timer...")
-    await scale.startStopTimer()
+    await scale.start_stop_timer()
 
     await asyncio.sleep(5)
     print("resetting Timer...")
-    await scale.resetTimer()
+    await scale.reset_timer()
     await asyncio.sleep(5)
     print("starting Timer...")
-    await scale.startStopTimer()
+    await scale.start_stop_timer()
     await asyncio.sleep(30)
     print("stopping Timer...")
-    await scale.startStopTimer()
-
+    await scale.start_stop_timer()
 
     # print(f"Timer running: {scale._timer_running}")
     # print(scale.timer)
@@ -48,5 +48,6 @@ async def main():
     # print(scale.timer)
 
     await scale.disconnect()
+
 
 asyncio.run(main())
