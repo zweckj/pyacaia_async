@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from bleak import BleakClient, BleakGATTCharacteristic, BLEDevice
 from bleak.exc import BleakDeviceNotFoundError, BleakError

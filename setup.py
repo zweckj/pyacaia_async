@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="pyacaia_async",
-    version="0.0.9",
+    version="0.0.10",
     description="An async implementation of PyAcaia",
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -25,6 +25,6 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=["bleak>=0.20.2"],
     package_data={
-        "license": ["LICENSE"],
+        "pyacaia_async": ["py.typed"],
     },
 )
