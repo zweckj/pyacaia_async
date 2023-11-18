@@ -160,13 +160,22 @@ class AcaiaScale:
         if not self._client:
             raise AcaiaError("Client not initialized")
         try:
-            await self._client.connect()
+            try:
+                await self._client.connect()
+            except BleakError as ex:
+                _LOGGER.exception("Error during connecting to device: %s", ex)
+                raise AcaiaError("Error during connecting to device") from ex
+
             self._connected = True
             _LOGGER.debug("Connected to Acaia Scale")
 
             if callback is not None:
-                await self._client.start_notify(self._notify_char_id, callback)
-                await asyncio.sleep(0.5)
+                try:
+                    await self._client.start_notify(self._notify_char_id, callback)
+                    await asyncio.sleep(0.5)
+                except BleakError as ex:
+                    _LOGGER.exception("Error subscribing to notifications: %s", ex)
+                    raise AcaiaError("Error subscribing to notifications") from ex
 
             await self.auth()
 
@@ -175,8 +184,6 @@ class AcaiaScale:
 
         except BleakDeviceNotFoundError as ex:
             raise AcaiaDeviceNotFound("Device not found") from ex
-        except BleakError as ex:
-            raise AcaiaError("Error connecting to device") from ex
 
     async def auth(self) -> None:
         """Send auth message to scale, if subscribed to notifications returns Settings object"""
