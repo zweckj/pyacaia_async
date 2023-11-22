@@ -61,6 +61,8 @@ class AcaiaScale:
         self._data: dict[str, Any] = {BATTERY_LEVEL: None, UNITS: GRAMS, WEIGHT: 0.0}
 
         self._queue: asyncio.Queue = asyncio.Queue()
+        self._heartbeat_task: asyncio.Task | None = None
+        self._process_queue_task: asyncio.Task | None = None
 
         self._msg_types["auth"] = encode_id(is_pyxis_style=is_new_style_scale)
 
@@ -120,16 +122,7 @@ class AcaiaScale:
         else:
             raise ValueError("Either mac or bleDevice must be specified")
 
-        if callback is None:
-            callback = self.on_bluetooth_data_received
         await self.connect(callback)
-        asyncio.create_task(
-            self._send_heartbeats(
-                interval=HEARTBEAT_INTERVAL if not is_new_style_scale else 1,
-                new_style_heartbeat=is_new_style_scale,
-            )
-        )
-        asyncio.create_task(self._process_queue())
         return self
 
     @property
@@ -214,7 +207,7 @@ class AcaiaScale:
             self._connected = True
             _LOGGER.debug("Connected to Acaia Scale")
 
-            if callback is  None:
+            if callback is None:
                 callback = self.on_bluetooth_data_received
             try:
                 await self._client.start_notify(self._notify_char_id, callback)
@@ -230,6 +223,14 @@ class AcaiaScale:
 
         except BleakDeviceNotFoundError as ex:
             raise AcaiaDeviceNotFound("Device not found") from ex
+
+        asyncio.create_task(
+            self._send_heartbeats(
+                interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
+                new_style_heartbeat=self._is_new_style_scale,
+            )
+        )
+        asyncio.create_task(self._process_queue())
 
     async def auth(self) -> None:
         """Send auth message to scale, if subscribed to notifications returns Settings object"""
@@ -288,10 +289,14 @@ class AcaiaScale:
 
     async def tare(self) -> None:
         """Tare the scale."""
+        if not self.connected:
+            await self.connect()
         await self._queue.put((self._default_char_id, self.msg_types["tare"]))
 
     async def start_stop_timer(self) -> None:
         """Start/Stop the timer."""
+        if not self.connected:
+            await self.connect()
         if not self._timer_running:
             _LOGGER.debug('Sending "start" message.')
             await self._queue.put((self._default_char_id, self.msg_types["startTimer"]))
@@ -306,6 +311,8 @@ class AcaiaScale:
 
     async def reset_timer(self) -> None:
         """Reset the timer."""
+        if not self.connected:
+            await self.connect()
         await self._queue.put((self._default_char_id, self.msg_types["resetTimer"]))
         self._timer_start = None
         self._timer_stop = None
