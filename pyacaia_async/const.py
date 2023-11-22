@@ -8,3 +8,10 @@ HEADER1: Final = 0xEF
 HEADER2: Final = 0xDD
 HEARTBEAT_INTERVAL: Final = 5
 SCALE_START_NAMES: Final = ["ACAIA", "PYXIS", "LUNAR", "PROCH"]
+
+BATTERY_LEVEL: Final = "battery_level"
+WEIGHT: Final = "weight"
+UNITS: Final = "units"
+
+GRAMS: Final = "grams"
+OUNCE: Final = "ounces"

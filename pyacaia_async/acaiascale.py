@@ -4,7 +4,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from bleak import BleakClient, BleakGATTCharacteristic, BLEDevice
 from bleak.exc import BleakDeviceNotFoundError, BleakError
@@ -16,6 +18,8 @@ from .const import (
     OLD_STYLE_CHAR_ID,
 )
 from .exceptions import AcaiaDeviceNotFound, AcaiaError
+from .const import BATTERY_LEVEL, GRAMS, WEIGHT, UNITS
+from .decode import Message, Settings, decode
 from .helpers import encode, encode_id, encode_notification_request
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +40,12 @@ class AcaiaScale:
         "notificationRequest": encode_notification_request(),
     }
 
-    def __init__(self, mac: str | None = None, is_new_style_scale: bool = True) -> None:
+    def __init__(
+        self,
+        mac: str | None = None,
+        is_new_style_scale: bool = True,
+        notify_callback: Callable[[], None] | None = None,
+    ) -> None:
         """Initialize the scale."""
 
         self._mac = mac
@@ -49,6 +58,7 @@ class AcaiaScale:
         self._timestamp_last_command: float | None = None
         self._timer_start: float | None = None
         self._timer_stop: float | None = None
+        self._data: dict[str, Any] = {BATTERY_LEVEL: None, UNITS: GRAMS, WEIGHT: 0.0}
 
         self._queue: asyncio.Queue = asyncio.Queue()
 
@@ -57,6 +67,8 @@ class AcaiaScale:
         if not is_new_style_scale:
             # for old style scales, the default char id is the same as the notify char id
             self._default_char_id = self._notify_char_id = OLD_STYLE_CHAR_ID
+
+        self._notify_callback: Callable[[], None] | None = notify_callback
 
     @property
     def mac(self) -> str:
@@ -84,6 +96,11 @@ class AcaiaScale:
         """Set connected state."""
         self._connected = value
 
+    @property
+    def data(self) -> dict[str, Any]:
+        """Return the data of the scale."""
+        return self._data
+
     @classmethod
     async def create(
         cls,
@@ -103,6 +120,8 @@ class AcaiaScale:
         else:
             raise ValueError("Either mac or bleDevice must be specified")
 
+        if callback is None:
+            callback = self.on_bluetooth_data_received
         await self.connect(callback)
         asyncio.create_task(
             self._send_heartbeats(
@@ -195,13 +214,14 @@ class AcaiaScale:
             self._connected = True
             _LOGGER.debug("Connected to Acaia Scale")
 
-            if callback is not None:
-                try:
-                    await self._client.start_notify(self._notify_char_id, callback)
-                    await asyncio.sleep(0.5)
-                except BleakError as ex:
-                    _LOGGER.exception("Error subscribing to notifications: %s", ex)
-                    raise AcaiaError("Error subscribing to notifications") from ex
+            if callback is  None:
+                callback = self.on_bluetooth_data_received
+            try:
+                await self._client.start_notify(self._notify_char_id, callback)
+                await asyncio.sleep(0.5)
+            except BleakError as ex:
+                _LOGGER.exception("Error subscribing to notifications: %s", ex)
+                raise AcaiaError("Error subscribing to notifications") from ex
 
             await self.auth()
 
@@ -293,3 +313,23 @@ class AcaiaScale:
         if self._timer_running:
             await self._queue.put((self._default_char_id, self.msg_types["startTimer"]))
             self._timer_start = time.time()
+
+    async def on_bluetooth_data_received(
+        self, characteristic: BleakGATTCharacteristic, data: bytearray
+    ) -> None:
+        """Receive data from scale."""
+        msg = decode(data)[0]
+
+        if isinstance(msg, Settings):
+            self._data[BATTERY_LEVEL] = msg.battery
+            self._data[UNITS] = msg.units
+            _LOGGER.debug(
+                "Got battery level %s, units %s", str(msg.battery), str(msg.units)
+            )
+
+        elif isinstance(msg, Message):
+            self._data[WEIGHT] = msg.value
+            _LOGGER.debug("Got weight %s", str(msg.value))
+
+        if self._notify_callback is not None:
+            self._notify_callback()
