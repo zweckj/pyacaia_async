@@ -58,6 +58,32 @@ class AcaiaScale:
             # for old style scales, the default char id is the same as the notify char id
             self._default_char_id = self._notify_char_id = OLD_STYLE_CHAR_ID
 
+    @property
+    def mac(self) -> str:
+        """Return the mac address of the scale in upper case."""
+        assert self._mac
+        return self._mac.upper()
+
+    @property
+    def timer_running(self) -> bool:
+        """Return whether the timer is running."""
+        return self._timer_running
+
+    @timer_running.setter
+    def timer_running(self, value: bool) -> None:
+        """Set timer running state."""
+        self._timer_running = value
+
+    @property
+    def connected(self) -> bool:
+        """Return whether the scale is connected."""
+        return self._connected
+
+    @connected.setter
+    def connected(self, value: bool) -> None:
+        """Set connected state."""
+        self._connected = value
+
     @classmethod
     async def create(
         cls,
