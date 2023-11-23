@@ -224,13 +224,15 @@ class AcaiaScale:
         except BleakDeviceNotFoundError as ex:
             raise AcaiaDeviceNotFound("Device not found") from ex
 
-        asyncio.create_task(
-            self._send_heartbeats(
-                interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
-                new_style_heartbeat=self._is_new_style_scale,
+        if not self._heartbeat_task:
+            self._heartbeat_task = asyncio.create_task(
+                self._send_heartbeats(
+                    interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
+                    new_style_heartbeat=self._is_new_style_scale,
+                )
             )
-        )
-        asyncio.create_task(self._process_queue())
+        if not self._process_queue_task:
+            self._process_queue_task = asyncio.create_task(self._process_queue())
 
     async def auth(self) -> None:
         """Send auth message to scale, if subscribed to notifications returns Settings object"""
