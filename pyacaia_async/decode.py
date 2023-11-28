@@ -14,10 +14,10 @@ class Message:
     def __init__(self, msg_type: int, payload: bytearray | list[int]) -> None:
         self.msg_type = msg_type
         self.payload = payload
-        self.value = None
-        self.button = None
-        self.time = None
-        self.timer_running = False
+        self.value: float | None = None
+        self.button: str | None = None
+        self.time: int | None = None
+        self.timer_running: bool | None = None
 
         if self.msg_type == 5:
             self.value = self._decode_weight(payload)

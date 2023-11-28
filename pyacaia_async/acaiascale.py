@@ -160,6 +160,9 @@ class AcaiaScale:
         except BleakError as ex:
             self._connected = False
             raise AcaiaError("Error writing to device") from ex
+        except TimeoutError as ex:
+            self._connected = False
+            raise AcaiaError("Timeout writing to device") from ex
         except Exception as ex:
             self._connected = False
             raise AcaiaError("Unknown error writing to device") from ex
@@ -203,6 +206,12 @@ class AcaiaScale:
             except BleakError as ex:
                 _LOGGER.exception("Error during connecting to device: %s", ex)
                 raise AcaiaError("Error during connecting to device") from ex
+            except TimeoutError as ex:
+                _LOGGER.exception("Timeout during connecting to device: %s", ex)
+                raise AcaiaError("Timeout during connecting to device") from ex
+            except Exception as ex:
+                _LOGGER.exception("Unknown error during connecting to device: %s", ex)
+                raise AcaiaError("Unknown error during connecting to device") from ex
 
             self._connected = True
             _LOGGER.debug("Connected to Acaia Scale")
@@ -338,7 +347,8 @@ class AcaiaScale:
 
         elif isinstance(msg, Message):
             self._data[WEIGHT] = msg.value
-            self._timer_running = msg.timer_running
+            if msg.timer_running is not None:
+                self._timer_running = msg.timer_running
             _LOGGER.debug("Got weight %s", str(msg.value))
 
         if self._notify_callback is not None:
