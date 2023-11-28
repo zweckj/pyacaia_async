@@ -338,6 +338,7 @@ class AcaiaScale:
 
         elif isinstance(msg, Message):
             self._data[WEIGHT] = msg.value
+            self._timer_running = msg.timer_running
             _LOGGER.debug("Got weight %s", str(msg.value))
 
         if self._notify_callback is not None:

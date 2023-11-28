@@ -17,6 +17,7 @@ class Message:
         self.value = None
         self.button = None
         self.time = None
+        self.timer_running = False
 
         if self.msg_type == 5:
             self.value = self._decode_weight(payload)
@@ -41,6 +42,7 @@ class Message:
                 _LOGGER.debug("tare (weight: %s)", self.value)
             elif payload[0] == 8 and payload[1] == 5:
                 self.button = "start"
+                self.timer_running = True
                 self.value = self._decode_weight(payload[2:])
                 _LOGGER.debug("start (weight: %s)", self.value)
             elif (payload[0] == 10 and payload[1] == 7) or (
@@ -48,6 +50,7 @@ class Message:
             ):
                 self.button = "stop"
                 self.time = self._decode_time(payload[2:])
+                self.timer_running = False
                 self.value = self._decode_weight(payload[6:])
                 _LOGGER.debug("stop time: %s, weight: %s", self.time, self.value)
 
