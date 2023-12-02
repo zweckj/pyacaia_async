@@ -63,6 +63,7 @@ class AcaiaScale:
         self._queue: asyncio.Queue = asyncio.Queue()
         self._heartbeat_task: asyncio.Task | None = None
         self._process_queue_task: asyncio.Task | None = None
+        self._tasks_initialized = False
 
         self._msg_types["auth"] = encode_id(is_pyxis_style=is_new_style_scale)
 
@@ -232,16 +233,22 @@ class AcaiaScale:
 
         except BleakDeviceNotFoundError as ex:
             raise AcaiaDeviceNotFound("Device not found") from ex
+        
+        self._setup_tasks()
 
-        if not self._heartbeat_task:
-            self._heartbeat_task = asyncio.create_task(
+    def _setup_tasks(self) -> None:
+        """Setup background tasks""":
+        if self._tasks_initialized:
+            return
+        
+        self._heartbeat_task = asyncio.create_task(
                 self._send_heartbeats(
                     interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
                     new_style_heartbeat=self._is_new_style_scale,
                 )
             )
-        if not self._process_queue_task:
-            self._process_queue_task = asyncio.create_task(self._process_queue())
+        self._process_queue_task = asyncio.create_task(self._process_queue())
+        self._tasks_initialized = True
 
     async def auth(self) -> None:
         """Send auth message to scale, if subscribed to notifications returns Settings object"""
