@@ -5,10 +5,14 @@ from pyacaia_async.decode import notification_handler
 
 
 async def main():
-    scale = await AcaiaScale.create(mac="11:22:33:44:55", callback=notification_handler)
+    with open("mac.txt", "r") as f:
+        mac = f.read().strip()
+
+    scale = await AcaiaScale.create(mac=mac, callback=None)
 
     # await asyncio.sleep(1)
     # await scale.tare()
+    await asyncio.sleep(120)
 
     await asyncio.sleep(1)
     print("starting Timer...")

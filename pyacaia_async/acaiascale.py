@@ -219,6 +219,7 @@ class AcaiaScale:
 
             if callback is None:
                 callback = self.on_bluetooth_data_received
+
             try:
                 await self._client.start_notify(self._notify_char_id, callback)
                 await asyncio.sleep(0.5)
@@ -227,26 +228,24 @@ class AcaiaScale:
                 raise AcaiaError("Error subscribing to notifications") from ex
 
             await self.auth()
-
-            if callback is not None:
-                await self.send_weight_notification_request()
+            await self.send_weight_notification_request()
 
         except BleakDeviceNotFoundError as ex:
             raise AcaiaDeviceNotFound("Device not found") from ex
-        
+
         self._setup_tasks()
 
     def _setup_tasks(self) -> None:
-        """Setup background tasks""":
+        """Setup background tasks"""
         if self._tasks_initialized:
             return
-        
+
         self._heartbeat_task = asyncio.create_task(
-                self._send_heartbeats(
-                    interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
-                    new_style_heartbeat=self._is_new_style_scale,
-                )
+            self._send_heartbeats(
+                interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
+                new_style_heartbeat=self._is_new_style_scale,
             )
+        )
         self._process_queue_task = asyncio.create_task(self._process_queue())
         self._tasks_initialized = True
 
