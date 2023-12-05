@@ -54,6 +54,7 @@ class AcaiaScale:
         self._client: BleakClient | None = None
         self._connected = False
         self._disconnecting = False
+        self._last_disconnect_time: float | None = None
         self._timer_running = False
         self._timestamp_last_command: float | None = None
         self._timer_start: float | None = None
@@ -63,7 +64,6 @@ class AcaiaScale:
         self._queue: asyncio.Queue = asyncio.Queue()
         self._heartbeat_task: asyncio.Task | None = None
         self._process_queue_task: asyncio.Task | None = None
-        self._tasks_initialized = False
 
         self._msg_types["auth"] = encode_id(is_pyxis_style=is_new_style_scale)
 
@@ -94,11 +94,6 @@ class AcaiaScale:
         """Return whether the scale is connected."""
         return self._connected
 
-    @connected.setter
-    def connected(self, value: bool) -> None:
-        """Set connected state."""
-        self._connected = value
-
     @property
     def data(self) -> dict[str, Any]:
         """Return the data of the scale."""
@@ -117,9 +112,15 @@ class AcaiaScale:
         self = cls(mac, is_new_style_scale)
 
         if ble_device:
-            self._client = BleakClient(ble_device)
+            self._client = BleakClient(
+                address_or_ble_device=ble_device,
+                disconnected_callback=self._device_disconnected_callback,
+            )
         elif mac:
-            self._client = BleakClient(mac)
+            self._client = BleakClient(
+                address_or_ble_device=mac,
+                disconnected_callback=self._device_disconnected_callback,
+            )
         else:
             raise ValueError("Either mac or bleDevice must be specified")
 
@@ -143,9 +144,20 @@ class AcaiaScale:
 
         return int(self._timer_stop - self._timer_start)
 
+    def _device_disconnected_callback(self, client: BleakClient) -> None:
+        """Callback for device disconnected."""
+        _LOGGER.debug("Device disconnected")
+        self._connected = False
+        self._last_disconnect_time = time.time()
+        if self._notify_callback:
+            self._notify_callback()
+
     def new_client_from_ble_device(self, ble_device: BLEDevice) -> None:
         """Create a new client from a BLEDevice, used for Home Assistant"""
-        self._client = BleakClient(ble_device)
+        self._client = BleakClient(
+            address_or_ble_device=ble_device,
+            disconnected_callback=self._device_disconnected_callback,
+        )
 
     async def _write_msg(self, char_id: str, payload: bytearray) -> None:
         """wrapper for writing to the device."""
@@ -153,20 +165,16 @@ class AcaiaScale:
             if not self._connected:
                 return
             assert self._client
+            _LOGGER.debug("Writing to device...")
             await self._client.write_gatt_char(char_id, payload)
             self._timestamp_last_command = time.time()
-        except BleakDeviceNotFoundError as ex:
-            self._connected = False
-            raise AcaiaDeviceNotFound("Device not found") from ex
-        except BleakError as ex:
-            self._connected = False
-            raise AcaiaError("Error writing to device") from ex
-        except TimeoutError as ex:
-            self._connected = False
-            raise AcaiaError("Timeout writing to device") from ex
-        except Exception as ex:
-            self._connected = False
-            raise AcaiaError("Unknown error writing to device") from ex
+        except (BleakDeviceNotFoundError, BleakError, TimeoutError) as ex:
+            if self._connected:
+                self._connected = False
+                self._last_disconnect_time = time.time()
+                if isinstance(ex, BleakDeviceNotFoundError):
+                    raise AcaiaDeviceNotFound("Device not found") from ex
+                raise AcaiaError("Error writing to device") from ex
 
     async def _process_queue(self) -> None:
         """Task to process the queue in the background."""
@@ -190,7 +198,8 @@ class AcaiaScale:
             except asyncio.CancelledError:
                 return
             except (AcaiaDeviceNotFound, AcaiaError) as ex:
-                _LOGGER.debug("Error writing to device: %s", ex)
+                if self.connected:
+                    _LOGGER.warning("Error writing to device: %s", ex)
                 return
 
     async def connect(
@@ -201,18 +210,14 @@ class AcaiaScale:
         """Initiate connection to the scale"""
         if not self._client:
             raise AcaiaError("Client not initialized")
+        if self.connected:
+            return
         try:
             try:
                 await self._client.connect()
-            except BleakError as ex:
-                _LOGGER.exception("Error during connecting to device: %s", ex)
+            except (BleakError, TimeoutError) as ex:
+                _LOGGER.debug("Error during connecting to device: %s", ex)
                 raise AcaiaError("Error during connecting to device") from ex
-            except TimeoutError as ex:
-                _LOGGER.exception("Timeout during connecting to device: %s", ex)
-                raise AcaiaError("Timeout during connecting to device") from ex
-            except Exception as ex:
-                _LOGGER.exception("Unknown error during connecting to device: %s", ex)
-                raise AcaiaError("Unknown error during connecting to device") from ex
 
             self._connected = True
             _LOGGER.debug("Connected to Acaia Scale")
@@ -224,7 +229,7 @@ class AcaiaScale:
                 await self._client.start_notify(self._notify_char_id, callback)
                 await asyncio.sleep(0.5)
             except BleakError as ex:
-                _LOGGER.exception("Error subscribing to notifications: %s", ex)
+                _LOGGER.debug("Error subscribing to notifications: %s", ex)
                 raise AcaiaError("Error subscribing to notifications") from ex
 
             await self.auth()
@@ -237,17 +242,15 @@ class AcaiaScale:
 
     def _setup_tasks(self) -> None:
         """Setup background tasks"""
-        if self._tasks_initialized:
-            return
-
-        self._heartbeat_task = asyncio.create_task(
-            self._send_heartbeats(
-                interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
-                new_style_heartbeat=self._is_new_style_scale,
+        if not self._heartbeat_task or self._heartbeat_task.done():
+            self._heartbeat_task = asyncio.create_task(
+                self._send_heartbeats(
+                    interval=HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
+                    new_style_heartbeat=self._is_new_style_scale,
+                )
             )
-        )
-        self._process_queue_task = asyncio.create_task(self._process_queue())
-        self._tasks_initialized = True
+        if not self._process_queue_task or self._process_queue_task.done():
+            self._process_queue_task = asyncio.create_task(self._process_queue())
 
     async def auth(self) -> None:
         """Send auth message to scale, if subscribed to notifications returns Settings object"""
