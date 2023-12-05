@@ -169,7 +169,9 @@ class AcaiaScale:
             await self._client.write_gatt_char(char_id, payload)
             self._timestamp_last_command = time.time()
         except (BleakDeviceNotFoundError, BleakError, TimeoutError) as ex:
-            if self._connected:
+            if (
+                self._connected
+            ):  # might have been disconnected by the disconnected_callback in the meantime
                 self._connected = False
                 self._last_disconnect_time = time.time()
                 if isinstance(ex, BleakDeviceNotFoundError):
@@ -198,7 +200,9 @@ class AcaiaScale:
             except asyncio.CancelledError:
                 return
             except (AcaiaDeviceNotFound, AcaiaError) as ex:
-                if self.connected:
+                if (
+                    self.connected
+                ):  # might have been disconnected by the disconnected_callback in the meantime
                     _LOGGER.warning("Error writing to device: %s", ex)
                 return
 
