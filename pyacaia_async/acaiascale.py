@@ -146,7 +146,7 @@ class AcaiaScale:
 
     def _device_disconnected_callback(self, client: BleakClient) -> None:
         """Callback for device disconnected."""
-        _LOGGER.debug("Device disconnected")
+        _LOGGER.warning("Scale with MAC %s disconnected", self.mac)
         self._connected = False
         self._last_disconnect_time = time.time()
         if self._notify_callback:
@@ -165,7 +165,7 @@ class AcaiaScale:
             if not self._connected:
                 return
             assert self._client
-            _LOGGER.debug("Writing to device...")
+            _LOGGER.debug("Writing to scale %s", self.mac)
             await self._client.write_gatt_char(char_id, payload)
             self._timestamp_last_command = time.time()
         except (BleakDeviceNotFoundError, BleakError, TimeoutError) as ex:
@@ -216,6 +216,15 @@ class AcaiaScale:
             raise AcaiaError("Client not initialized")
         if self.connected:
             return
+        if self._last_disconnect_time and self._last_disconnect_time > (
+            time.time() - 15
+        ):
+            _LOGGER.debug(
+                "Scale has recently been disconnected, waiting 15 seconds before reconnecting",
+                self.mac,
+            )
+            return
+
         try:
             try:
                 await self._client.connect()
