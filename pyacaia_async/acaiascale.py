@@ -84,11 +84,6 @@ class AcaiaScale:
         """Return whether the timer is running."""
         return self._timer_running
 
-    @timer_running.setter
-    def timer_running(self, value: bool) -> None:
-        """Set timer running state."""
-        self._timer_running = value
-
     @property
     def connected(self) -> bool:
         """Return whether the scale is connected."""
