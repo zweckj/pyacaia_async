@@ -66,18 +66,26 @@ class AcaiaScale:
             address_or_ble_device=mac,
             disconnected_callback=self._device_disconnected_callback,
         )
-        self.connected = False
-        self.timer_running = False
+
+        # tasks
         self.heartbeat_task: asyncio.Task | None = None
         self.process_queue_task: asyncio.Task | None = None
-        self.last_disconnect_time: float | None = None
 
-        self._timestamp_last_command: float | None = None
+        # timer related
+        self.timer_running = False
         self._timer_start: float | None = None
         self._timer_stop: float | None = None
+
+        # connection diagnostics
+        self.connected = False
+        self._timestamp_last_command: float | None = None
+        self.last_disconnect_time: float | None = None
+
         self._data = AcaiaData(battery_level=0, weight=0.0, units=UnitMass.GRAMS)
 
+        # queue
         self._queue: asyncio.Queue = asyncio.Queue()
+        self._add_to_queue_lock = asyncio.Lock()
 
         self._msg_types["auth"] = encode_id(is_pyxis_style=is_new_style_scale)
 
@@ -256,7 +264,7 @@ class AcaiaScale:
                     self.on_bluetooth_data_received if callback is None else callback
                 ),
             )
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)
         except BleakError as ex:
             msg = "Error subscribing to notifications"
             _LOGGER.debug("%s: %s", msg, ex)
@@ -299,20 +307,21 @@ class AcaiaScale:
                 if not self.connected:
                     return
 
-                _LOGGER.debug("Sending heartbeat")
-                if self._is_new_style_scale:
+                async with self._add_to_queue_lock:
+                    _LOGGER.debug("Sending heartbeat")
+                    if self._is_new_style_scale:
+                        await self._queue.put(
+                            (self._default_char_id, self._msg_types["auth"])
+                        )
+
                     await self._queue.put(
-                        (self._default_char_id, self._msg_types["auth"])
+                        (self._default_char_id, self._msg_types["heartbeat"])
                     )
 
-                await self._queue.put(
-                    (self._default_char_id, self._msg_types["heartbeat"])
-                )
-
-                if self._is_new_style_scale:
-                    await self._queue.put(
-                        (self._default_char_id, self._msg_types["getSettings"])
-                    )
+                    if self._is_new_style_scale:
+                        await self._queue.put(
+                            (self._default_char_id, self._msg_types["getSettings"])
+                        )
                 await asyncio.sleep(
                     HEARTBEAT_INTERVAL if not self._is_new_style_scale else 1,
                 )
@@ -341,7 +350,8 @@ class AcaiaScale:
         """Tare the scale."""
         if not self.connected:
             await self.connect()
-        await self._queue.put((self._default_char_id, self._msg_types["tare"]))
+        async with self._add_to_queue_lock:
+            await self._queue.put((self._default_char_id, self._msg_types["tare"]))
 
     async def start_stop_timer(self) -> None:
         """Start/Stop the timer."""
@@ -350,15 +360,20 @@ class AcaiaScale:
 
         if not self.timer_running:
             _LOGGER.debug('Sending "start" message.')
-            await self._queue.put(
-                (self._default_char_id, self._msg_types["startTimer"])
-            )
+
+            async with self._add_to_queue_lock:
+                await self._queue.put(
+                    (self._default_char_id, self._msg_types["startTimer"])
+                )
             self.timer_running = True
             if not self._timer_start:
                 self._timer_start = time.time()
         else:
             _LOGGER.debug('Sending "stop" message.')
-            await self._queue.put((self._default_char_id, self._msg_types["stopTimer"]))
+            async with self._add_to_queue_lock:
+                await self._queue.put(
+                    (self._default_char_id, self._msg_types["stopTimer"])
+                )
             self.timer_running = False
             self._timer_stop = time.time()
 
@@ -366,14 +381,18 @@ class AcaiaScale:
         """Reset the timer."""
         if not self.connected:
             await self.connect()
-        await self._queue.put((self._default_char_id, self._msg_types["resetTimer"]))
+        async with self._add_to_queue_lock:
+            await self._queue.put(
+                (self._default_char_id, self._msg_types["resetTimer"])
+            )
         self._timer_start = None
         self._timer_stop = None
 
         if self.timer_running:
-            await self._queue.put(
-                (self._default_char_id, self._msg_types["startTimer"])
-            )
+            async with self._add_to_queue_lock:
+                await self._queue.put(
+                    (self._default_char_id, self._msg_types["startTimer"])
+                )
             self._timer_start = time.time()
 
     async def on_bluetooth_data_received(
