@@ -1,5 +1,7 @@
 """Constants for pyacaia_async."""
+
 from typing import Final
+from enum import StrEnum
 
 DEFAULT_CHAR_ID: Final = "49535343-8841-43f4-a8d4-ecbe34729bb3"
 NOTIFY_CHAR_ID: Final = "49535343-1e4d-4bd9-ba61-23c647249616"
@@ -9,9 +11,9 @@ HEADER2: Final = 0xDD
 HEARTBEAT_INTERVAL: Final = 5
 SCALE_START_NAMES: Final = ["ACAIA", "PYXIS", "LUNAR", "PROCH"]
 
-BATTERY_LEVEL: Final = "battery_level"
-WEIGHT: Final = "weight"
-UNITS: Final = "units"
 
-GRAMS: Final = "grams"
-OUNCE: Final = "ounces"
+class UnitMass(StrEnum):
+    """Unit of mass."""
+
+    GRAMS = "grams"
+    OUNCES = "ounces"
