@@ -105,6 +105,11 @@ class AcaiaScale:
         """Return the device info of the scale."""
         return self._device_state
 
+    @property
+    def weight(self) -> float | None:
+        """Return the weight of the scale."""
+        return self._weight
+
     @classmethod
     async def create(
         cls,
