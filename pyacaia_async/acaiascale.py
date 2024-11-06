@@ -28,16 +28,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(kw_only=True)
-class AcaiaData:
-    """Data class for Acaia scale data."""
+class AcaiaDeviceState:
+    """Data class for acaia scale info data."""
 
     battery_level: int
-    weight: float
     units: UnitMass
 
 
 class AcaiaScale:
-    """Representation of an Acaia scale."""
+    """Representation of an acaia scale."""
 
     _default_char_id = DEFAULT_CHAR_ID
     _notify_char_id = NOTIFY_CHAR_ID
@@ -81,7 +80,8 @@ class AcaiaScale:
         self._timestamp_last_command: float | None = None
         self.last_disconnect_time: float | None = None
 
-        self._data = AcaiaData(battery_level=0, weight=0.0, units=UnitMass.GRAMS)
+        self._device_state: AcaiaDeviceState | None = None
+        self._weight: float | None = None
 
         # queue
         self._queue: asyncio.Queue = asyncio.Queue()
@@ -101,9 +101,9 @@ class AcaiaScale:
         return self._client.address.upper()
 
     @property
-    def data(self) -> AcaiaData:
-        """Return the data of the scale."""
-        return self._data
+    def device_state(self) -> AcaiaDeviceState | None:
+        """Return the device info of the scale."""
+        return self._device_state
 
     @classmethod
     async def create(
@@ -402,14 +402,15 @@ class AcaiaScale:
         msg = decode(data)[0]
 
         if isinstance(msg, Settings):
-            self._data.battery_level = msg.battery
-            self._data.units = UnitMass(msg.units)
+            self._device_state = AcaiaDeviceState(
+                battery_level=msg.battery, units=UnitMass(msg.units)
+            )
             _LOGGER.debug(
                 "Got battery level %s, units %s", str(msg.battery), str(msg.units)
             )
 
         elif isinstance(msg, Message):
-            self._data.weight = msg.value or 0
+            self._weight = msg.value
             if msg.timer_running is not None:
                 self.timer_running = msg.timer_running
             _LOGGER.debug("Got weight %s", str(msg.value))
