@@ -125,13 +125,15 @@ class AcaiaScale:
         return int(self._timer_stop - self._timer_start)
 
     def device_disconnected_handler(
-        self, client: BleakClient, notify: bool = True
+        self,
+        client: BleakClient | None = None,  # pylint: disable=unused-argument
+        notify: bool = True,
     ) -> None:
         """Callback for device disconnected."""
 
         _LOGGER.debug(
             "Scale with address %s disconnected through disconnect handler",
-            client.address,
+            self.mac,
         )
         self.timer_running = False
         self.connected = False
@@ -379,7 +381,9 @@ class AcaiaScale:
             self._timer_start = time.time()
 
     async def on_bluetooth_data_received(
-        self, characteristic: BleakGATTCharacteristic, data: bytearray
+        self,
+        characteristic: BleakGATTCharacteristic,  # pylint: disable=unused-argument
+        data: bytearray,
     ) -> None:
         """Receive data from scale."""
         msg = decode(data)[0]
