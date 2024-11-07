@@ -53,18 +53,16 @@ class AcaiaScale:
 
     def __init__(
         self,
-        mac: str,
+        address_or_ble_device: str | BLEDevice,
         is_new_style_scale: bool = True,
         notify_callback: Callable[[], None] | None = None,
     ) -> None:
         """Initialize the scale."""
 
         self._is_new_style_scale = is_new_style_scale
+        self._client: BleakClient | None = None
 
-        self._client = BleakClient(
-            address_or_ble_device=mac,
-            disconnected_callback=self._device_disconnected_callback,
-        )
+        self.address_or_ble_device = address_or_ble_device
 
         # tasks
         self.heartbeat_task: asyncio.Task | None = None
@@ -98,7 +96,11 @@ class AcaiaScale:
     @property
     def mac(self) -> str:
         """Return the mac address of the scale in upper case."""
-        return self._client.address.upper()
+        return (
+            self.address_or_ble_device.upper()
+            if isinstance(self.address_or_ble_device, str)
+            else self.address_or_ble_device.address.upper()
+        )
 
     @property
     def device_state(self) -> AcaiaDeviceState | None:
@@ -109,33 +111,6 @@ class AcaiaScale:
     def weight(self) -> float | None:
         """Return the weight of the scale."""
         return self._weight
-
-    @classmethod
-    async def create(
-        cls,
-        mac: str | None = None,
-        ble_device: BLEDevice | None = None,
-        is_new_style_scale: bool = True,
-        callback: (
-            Callable[[BleakGATTCharacteristic, bytearray], Awaitable[None] | None]
-            | None
-        ) = None,
-    ) -> AcaiaScale:
-        """Create a new scale."""
-
-        if ble_device:
-            self = cls("", is_new_style_scale)
-            self._client = BleakClient(
-                address_or_ble_device=ble_device,
-                disconnected_callback=self._device_disconnected_callback,
-            )
-        elif mac:
-            self = cls(mac, is_new_style_scale)
-        else:
-            raise ValueError("Either mac or bleDevice must be specified")
-
-        await self.connect(callback)
-        return self
 
     @property
     def timer(self) -> int:
@@ -149,31 +124,27 @@ class AcaiaScale:
 
         return int(self._timer_stop - self._timer_start)
 
-    def _device_disconnected_callback(self, client: BleakClient) -> None:
+    def device_disconnected_handler(
+        self, client: BleakClient, notify: bool = True
+    ) -> None:
         """Callback for device disconnected."""
 
         _LOGGER.debug(
-            "Scale with address %s disconnected through disconnect callback",
+            "Scale with address %s disconnected through disconnect handler",
             client.address,
         )
+        self.timer_running = False
         self.connected = False
         self.last_disconnect_time = time.time()
-        if self._notify_callback:
+        self.async_empty_queue_and_cancel_tasks()
+        if notify and self._notify_callback:
             self._notify_callback()
-
-    def new_client_from_ble_device(self, ble_device: BLEDevice) -> None:
-        """Create a new client from a BLEDevice, used for Home Assistant"""
-        self._client = BleakClient(
-            address_or_ble_device=ble_device,
-            disconnected_callback=self._device_disconnected_callback,
-        )
 
     async def _write_msg(self, char_id: str, payload: bytearray) -> None:
         """wrapper for writing to the device."""
+        if self._client is None:
+            raise AcaiaError("Client not initialized")
         try:
-            if not self.connected:
-                return
-
             await self._client.write_gatt_char(char_id, payload)
             self._timestamp_last_command = time.time()
         except BleakDeviceNotFoundError as ex:
@@ -241,6 +212,11 @@ class AcaiaScale:
                 "Scale has recently been disconnected, waiting 15 seconds before reconnecting"
             )
             return
+
+        self._client = BleakClient(
+            address_or_ble_device=self.address_or_ble_device,
+            disconnected_callback=self.device_disconnected_handler,
+        )
 
         try:
             await self._client.connect()
@@ -344,6 +320,8 @@ class AcaiaScale:
         _LOGGER.debug("Disconnecting from scale")
         self.connected = False
         await self._queue.join()
+        if not self._client:
+            return
         try:
             await self._client.disconnect()
         except BleakError as ex:
