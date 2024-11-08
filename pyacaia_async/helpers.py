@@ -1,9 +1,18 @@
 """Helper functions, taken from pyacaia."""
+
 import logging
 
-from bleak import BleakScanner
+from bleak import BleakScanner, BLEDevice, BleakClient
+from bleak.exc import BleakDeviceNotFoundError, BleakError
 
-from .const import HEADER1, HEADER2, SCALE_START_NAMES
+from .const import (
+    HEADER1,
+    HEADER2,
+    SCALE_START_NAMES,
+    OLD_STYLE_CHAR_ID,
+    DEFAULT_CHAR_ID,
+)
+from .exceptions import AcaiaDeviceNotFound, AcaiaError, AcaiaUnknownDevice
 
 _LOOGER = logging.getLogger(__name__)
 
@@ -30,6 +39,28 @@ async def scan(scanner: BleakScanner, timeout) -> list:
             addresses.append(d.address)
 
     return addresses
+
+
+async def is_new_scale(address_or_ble_device: str | BLEDevice) -> bool:
+    """Check if the scale is a new style scale."""
+    async with BleakClient(address_or_ble_device) as client:
+        try:
+            await client.connect()
+            services = await client.get_services()
+        except BleakDeviceNotFoundError as ex:
+            raise AcaiaDeviceNotFound("Device not found") from ex
+        except (BleakError, Exception) as ex:
+            raise AcaiaError from ex
+
+        characteristics = []
+        for char in services.characteristics.values():
+            characteristics.append(char.uuid)
+
+        if OLD_STYLE_CHAR_ID in characteristics:
+            return False
+        if DEFAULT_CHAR_ID in characteristics:
+            return True
+        raise AcaiaUnknownDevice
 
 
 def encode(msg_type: int, payload: bytearray | list[int]) -> bytearray:

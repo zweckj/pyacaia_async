@@ -1,4 +1,5 @@
 """Exceptions for pyacaia_async."""
+
 from bleak.exc import BleakDeviceNotFoundError, BleakError
 
 
@@ -12,3 +13,7 @@ class AcaiaDeviceNotFound(BleakDeviceNotFoundError):
 
 class AcaiaError(BleakError):
     """Exception for general bleak errors."""
+
+
+class AcaiaUnknownDevice(Exception):
+    """Exception for unknown devices."""
