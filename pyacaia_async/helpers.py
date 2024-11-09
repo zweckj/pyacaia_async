@@ -46,14 +46,13 @@ async def is_new_scale(address_or_ble_device: str | BLEDevice) -> bool:
     async with BleakClient(address_or_ble_device) as client:
         try:
             await client.connect()
-            services = await client.get_services()
         except BleakDeviceNotFoundError as ex:
             raise AcaiaDeviceNotFound("Device not found") from ex
         except (BleakError, Exception) as ex:
             raise AcaiaError from ex
 
         characteristics = []
-        for char in services.characteristics.values():
+        for char in client.services.characteristics.values():
             characteristics.append(char.uuid)
 
         if OLD_STYLE_CHAR_ID in characteristics:
