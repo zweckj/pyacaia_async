@@ -219,7 +219,7 @@ class AcaiaScale:
             address_or_ble_device=self.address_or_ble_device,
             disconnected_callback=self.device_disconnected_handler,
         )
-
+        self._client.get_services()
         try:
             await self._client.connect()
         except BleakError as ex:

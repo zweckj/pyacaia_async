@@ -1,10 +1,13 @@
-# pyacaia_async
+# aioacaia
+
 Async implementation of [pyacaia](https://github.com/lucapinello/pyacaia/tree/master/pyacaia), based on `asyncio` and `bleak`
+
 # Usage
+
 ```python
 import asyncio
-from pyacaia_async import AcaiaScale
-from pyacaia_async.helpers import find_acaia_devices
+from aioacaia import AcaiaScale
+from aioacaia.helpers import find_acaia_devices
 
 async def main()
   addresses = await find_acaia_devices()
@@ -18,7 +21,8 @@ asyncio.run(main())
 ```
 
 # Callback
-Weight and settings are available, if you pass a callback function to the constructor. 
+
+Weight and settings are available, if you pass a callback function to the constructor.
 In that callback you will either receive objects of type `Message` or `Settings`. A sample notification handler can look like this and can also be found in `decode.py`
 
 ```python

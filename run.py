@@ -1,7 +1,7 @@
 import asyncio
 
-from pyacaia_async import AcaiaScale
-from pyacaia_async.decode import notification_handler
+from aioacaia import AcaiaScale
+from aioacaia.decode import notification_handler
 
 
 async def main():

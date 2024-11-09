@@ -1,4 +1,4 @@
-"""Exceptions for pyacaia_async."""
+"""Exceptions for aioacaia."""
 
 from bleak.exc import BleakDeviceNotFoundError, BleakError
 

@@ -1,4 +1,4 @@
-"""Constants for pyacaia_async."""
+"""Constants for aioacaia."""
 
 from typing import Final
 from enum import StrEnum
