@@ -22,7 +22,7 @@ from .const import (
 from .exceptions import AcaiaDeviceNotFound, AcaiaError
 from .const import UnitMass
 from .decode import Message, Settings, decode
-from .helpers import encode, encode_id, encode_notification_request
+from .helpers import encode, encode_id, encode_notification_request, derive_model_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ class AcaiaScale:
     def __init__(
         self,
         address_or_ble_device: str | BLEDevice,
+        name: str | None = None,
         is_new_style_scale: bool = True,
         notify_callback: Callable[[], None] | None = None,
     ) -> None:
@@ -63,6 +64,8 @@ class AcaiaScale:
         self._client: BleakClient | None = None
 
         self.address_or_ble_device = address_or_ble_device
+        self.model = derive_model_name(name)
+        self.name = name
 
         # tasks
         self.heartbeat_task: asyncio.Task | None = None

@@ -150,3 +150,22 @@ def encode_notification_request() -> bytearray:
         byte_msg[i + 1] = p_byte & 0xFF
 
     return encode(12, byte_msg)
+
+
+def derive_model_name(name: str | None) -> str | None:
+    """Try Derive the model name from the title."""
+    if name is None:
+        return None
+
+    if name == "PROCHBT001":
+        return "Pearl"
+
+    if "-" not in name:
+        return None
+
+    prefix = name.split("-")[0]
+    if prefix in ("PEARL", "LUNAR", "PYXIS"):
+        return prefix.capitalize()
+    if prefix == "ACAIAL":
+        return "Lunar"
+    return None
