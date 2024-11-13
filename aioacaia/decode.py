@@ -1,4 +1,5 @@
 """Message decoding functions, taken from pyacaia."""
+
 import logging
 
 from bleak import BleakGATTCharacteristic
@@ -19,6 +20,11 @@ class Message:
         self.time: int | None = None
         self.timer_running: bool | None = None
 
+        _LOGGER.debug(
+            "Message received: msg_type: %s, payload: %s",
+            str(msg_type),
+            payload,
+        )
         if self.msg_type == 5:
             self.value = self._decode_weight(payload)
 
@@ -152,12 +158,15 @@ def decode(byte_msg: bytearray):
         if byte_msg[i] == HEADER1 and byte_msg[i + 1] == HEADER2:
             msg_start = i
             break
+
     if msg_start < 0 or len(byte_msg) - msg_start < 6:
+        _LOGGER.debug("Message too short %s", byte_msg)
         return (None, byte_msg)
 
     msg_end = msg_start + byte_msg[msg_start + 3] + 5
 
     if msg_end > len(byte_msg):
+        _LOGGER.debug("Message too long %s", byte_msg)
         return (None, byte_msg)
 
     if msg_start > 0:
@@ -176,6 +185,7 @@ def decode(byte_msg: bytearray):
         str(cmd),
         str(byte_msg[msg_start:msg_end]),
     )
+    _LOGGER.debug("Full message: %s", byte_msg)
     return (None, byte_msg[msg_end:])
 
 
