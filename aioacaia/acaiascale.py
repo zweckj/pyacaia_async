@@ -15,11 +15,13 @@ from bleak.exc import BleakDeviceNotFoundError, BleakError
 
 from .const import (
     DEFAULT_CHAR_ID,
+    HEADER1,
+    HEADER2,
     HEARTBEAT_INTERVAL,
     NOTIFY_CHAR_ID,
     OLD_STYLE_CHAR_ID,
 )
-from .exceptions import AcaiaDeviceNotFound, AcaiaError
+from .exceptions import AcaiaDeviceNotFound, AcaiaError, AcaiaMessageTooShort
 from .const import UnitMass
 from .decode import Message, Settings, decode
 from .helpers import encode, encode_id, encode_notification_request, derive_model_name
@@ -87,6 +89,8 @@ class AcaiaScale:
         # queue
         self._queue: asyncio.Queue = asyncio.Queue()
         self._add_to_queue_lock = asyncio.Lock()
+
+        self._last_short_msg: bytearray | None = None
 
         self._msg_types["auth"] = encode_id(is_pyxis_style=is_new_style_scale)
 
@@ -222,7 +226,7 @@ class AcaiaScale:
             address_or_ble_device=self.address_or_ble_device,
             disconnected_callback=self.device_disconnected_handler,
         )
-        self._client.get_services()
+
         try:
             await self._client.connect()
         except BleakError as ex:
@@ -389,7 +393,21 @@ class AcaiaScale:
         data: bytearray,
     ) -> None:
         """Receive data from scale."""
-        msg = decode(data)[0]
+
+        # For some scales the header is sent and then in next message the content
+        if (
+            self._last_short_msg is not None
+            and self._last_short_msg[0] == HEADER1
+            and self._last_short_msg[1] == HEADER2
+        ):
+            data = self._last_short_msg + data
+            self._last_short_msg = None
+
+        try:
+            msg = decode(data)[0]
+        except AcaiaMessageTooShort as ex:
+            self._last_short_msg = ex.bytes_recvd
+            return
 
         if isinstance(msg, Settings):
             self._device_state = AcaiaDeviceState(

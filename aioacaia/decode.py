@@ -5,6 +5,7 @@ import logging
 from bleak import BleakGATTCharacteristic
 
 from .const import HEADER1, HEADER2
+from .exceptions import AcaiaMessageTooShort
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ def decode(byte_msg: bytearray):
 
     if msg_start < 0 or len(byte_msg) - msg_start < 6:
         _LOGGER.debug("Message too short %s", byte_msg)
-        return (None, byte_msg)
+        raise AcaiaMessageTooShort(byte_msg)
 
     msg_end = msg_start + byte_msg[msg_start + 3] + 5
 

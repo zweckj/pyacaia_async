@@ -17,3 +17,13 @@ class AcaiaError(BleakError):
 
 class AcaiaUnknownDevice(Exception):
     """Exception for unknown devices."""
+
+
+class AcaiaMessageTooShort(Exception):
+    """Exception for messages that are too short."""
+
+    def __init__(
+        self, bytes_recvd: bytearray, message: str = "Message too short"
+    ) -> None:
+        super().__init__(message)
+        self.bytes_recvd = bytes_recvd
