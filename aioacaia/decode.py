@@ -161,7 +161,6 @@ def decode(byte_msg: bytearray):
             break
 
     if msg_start < 0 or len(byte_msg) - msg_start < 6:
-        _LOGGER.debug("Message too short %s", byte_msg)
         raise AcaiaMessageTooShort(byte_msg)
 
     msg_end = msg_start + byte_msg[msg_start + 3] + 5

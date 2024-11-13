@@ -402,11 +402,15 @@ class AcaiaScale:
         ):
             data = self._last_short_msg + data
             self._last_short_msg = None
+            _LOGGER.debug("Restored message from previous data: %s", data)
 
         try:
             msg = decode(data)[0]
         except AcaiaMessageTooShort as ex:
-            self._last_short_msg = ex.bytes_recvd
+            if ex.bytes_recvd[0] != HEADER1 or ex.bytes_recvd[1] != HEADER2:
+                _LOGGER.debug("Non-header message too short: %s", ex.bytes_recvd)
+            else:
+                self._last_short_msg = ex.bytes_recvd
             return
 
         if isinstance(msg, Settings):

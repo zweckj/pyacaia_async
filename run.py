@@ -6,6 +6,7 @@ from aioacaia.decode import decode, Message
 
 
 async def main():
+    # settings, arr = decode(bytearray(b"\xef\xdd\x08\t]\x02\x02\x01\x00\x01\x01\x00\r`"))
     scale = AcaiaScale("aa:bb:cc:dd:ee:ff")
     await scale.on_bluetooth_data_received(None, bytearray(b"\xef\xdd\x0c"))
     res = await scale.on_bluetooth_data_received(
