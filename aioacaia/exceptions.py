@@ -19,11 +19,24 @@ class AcaiaUnknownDevice(Exception):
     """Exception for unknown devices."""
 
 
-class AcaiaMessageTooShort(Exception):
+class AcaiaMessageError(Exception):
+    """Exception for message errors."""
+
+    def __init__(self, bytes_recvd: bytearray, message: str) -> None:
+        super().__init__()
+        self.message = message
+        self.bytes_recvd = bytes_recvd
+
+
+class AcaiaMessageTooShort(AcaiaMessageError):
     """Exception for messages that are too short."""
 
-    def __init__(
-        self, bytes_recvd: bytearray, message: str = "Message too short"
-    ) -> None:
-        super().__init__(message)
-        self.bytes_recvd = bytes_recvd
+    def __init__(self, bytes_recvd: bytearray) -> None:
+        super().__init__(bytes_recvd, "Message too short")
+
+
+class AcaiaMessageTooLong(AcaiaMessageError):
+    """Exception for messages that are too long."""
+
+    def __init__(self, bytes_recvd: bytearray) -> None:
+        super().__init__(bytes_recvd, "Message too long")

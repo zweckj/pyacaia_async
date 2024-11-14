@@ -21,7 +21,13 @@ from .const import (
     NOTIFY_CHAR_ID,
     OLD_STYLE_CHAR_ID,
 )
-from .exceptions import AcaiaDeviceNotFound, AcaiaError, AcaiaMessageTooShort
+from .exceptions import (
+    AcaiaDeviceNotFound,
+    AcaiaError,
+    AcaiaMessageError,
+    AcaiaMessageTooLong,
+    AcaiaMessageTooShort,
+)
 from .const import UnitMass
 from .decode import Message, Settings, decode
 from .helpers import encode, encode_id, encode_notification_request, derive_model_name
@@ -35,6 +41,8 @@ class AcaiaDeviceState:
 
     battery_level: int
     units: UnitMass
+    beeps: bool = True
+    auto_off_time: int = 0
 
 
 class AcaiaScale:
@@ -405,17 +413,24 @@ class AcaiaScale:
             _LOGGER.debug("Restored message from previous data: %s", data)
 
         try:
-            msg = decode(data)[0]
+            msg, _ = decode(data)
         except AcaiaMessageTooShort as ex:
             if ex.bytes_recvd[0] != HEADER1 or ex.bytes_recvd[1] != HEADER2:
                 _LOGGER.debug("Non-header message too short: %s", ex.bytes_recvd)
             else:
                 self._last_short_msg = ex.bytes_recvd
             return
+        except AcaiaMessageTooLong as ex:
+            _LOGGER.debug("%s: %s", ex.message, ex.bytes_recvd)
+        except AcaiaMessageError as ex:
+            _LOGGER.warning("%s: %s", ex.message, ex.bytes_recvd)
 
         if isinstance(msg, Settings):
             self._device_state = AcaiaDeviceState(
-                battery_level=msg.battery, units=UnitMass(msg.units)
+                battery_level=msg.battery,
+                units=UnitMass(msg.units),
+                beeps=msg.beep_on,
+                auto_off_time=msg.auto_off,
             )
             _LOGGER.debug(
                 "Got battery level %s, units %s", str(msg.battery), str(msg.units)

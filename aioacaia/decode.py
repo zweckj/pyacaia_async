@@ -1,15 +1,17 @@
 """Message decoding functions, taken from pyacaia."""
 
 import logging
+from dataclasses import dataclass
 
 from bleak import BleakGATTCharacteristic
 
 from .const import HEADER1, HEADER2
-from .exceptions import AcaiaMessageTooShort
+from .exceptions import AcaiaMessageError, AcaiaMessageTooLong, AcaiaMessageTooShort
 
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
 class Message:
     """Representation of a message from the scale."""
 
@@ -26,9 +28,12 @@ class Message:
             str(msg_type),
             payload,
         )
+
+        # weight message
         if self.msg_type == 5:
             self.value = self._decode_weight(payload)
 
+        # heartbeat response
         elif self.msg_type == 11:
             if payload[2] == 5:
                 self.value = self._decode_weight(payload[3:])
@@ -38,10 +43,12 @@ class Message:
                 "heartbeat response (weight: %s, time: %s)", self.value, self.time
             )
 
+        # time message
         elif self.msg_type == 7:
             self.time = self._decode_time(payload)
             _LOGGER.debug("timer: %s", self.time)
 
+        # button message
         elif self.msg_type == 8:
             if payload[0] == 0 and payload[1] == 5:
                 self.button = "tare"
@@ -71,7 +78,7 @@ class Message:
                 _LOGGER.debug("unknownbutton %s", str(payload))
 
         else:
-            _LOGGER.debug("message: %s, payload %s", msg_type, payload)
+            raise AcaiaMessageError(bytearray(payload), "Unknown message type")
 
     def _decode_weight(self, weight_payload):
         value = ((weight_payload[1] & 0xFF) << 8) + (weight_payload[0] & 0xFF)
@@ -98,6 +105,7 @@ class Message:
         return value
 
 
+@dataclass
 class Settings:
     """Representation of the settings from the scale."""
 
@@ -166,8 +174,9 @@ def decode(byte_msg: bytearray):
     msg_end = msg_start + byte_msg[msg_start + 3] + 5
 
     if msg_end > len(byte_msg):
-        _LOGGER.debug("Message too long %s", byte_msg)
-        return (None, byte_msg)
+        if byte_msg[i] != HEADER1 or byte_msg[1] != HEADER2:
+            raise AcaiaMessageError(byte_msg, "Long message without headers")
+        raise AcaiaMessageTooLong(byte_msg)
 
     if msg_start > 0:
         _LOGGER.debug("Ignoring %s bytes before header", i)
