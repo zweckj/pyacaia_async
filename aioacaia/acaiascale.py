@@ -96,7 +96,8 @@ class AcaiaScale:
         self._weight: float | None = None
 
         # flow rate
-        self.weight_history = deque(maxlen=20)  # Limit to 20 entries
+        self.weight_history: deque[tuple[float, float]] = deque(maxlen=20)  # Limit to 20 entries
+
 
         # queue
         self._queue: asyncio.Queue = asyncio.Queue()
