@@ -144,7 +144,8 @@ class AcaiaScale:
         return int(self._timer_stop - self._timer_start)
     
     @property
-    def flow_rate(self) -> float:
+    def flow_rate(self) -> float | None:
+
 
         if len(self.weight_history) < 4:
             return None
