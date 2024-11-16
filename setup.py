@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="aioacaia",
-    version="0.1.6",
+    version="0.1.7",
     description="An async implementation of PyAcaia",
     long_description=readme,
     long_description_content_type="text/markdown",
