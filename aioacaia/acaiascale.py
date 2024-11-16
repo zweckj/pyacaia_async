@@ -146,13 +146,16 @@ class AcaiaScale:
     
     @property
     def flow_rate(self) -> float | None:
+        now = time.time()
+        flows = []
 
+        # Remove old readings (more than 5 seconds)
+        self.weight_history = [
+            (t, w) for t, w in self.weight_history if now - t <= 5
+        ]
 
         if len(self.weight_history) < 4:
             return None
-
-        now = time.time()
-        flows = []
 
         # Calculate flow rates using 3 readings ago
         for i in range(3, len(self.weight_history)):
@@ -162,9 +165,6 @@ class AcaiaScale:
             time_diff = curr_time - prev_time
             weight_diff = curr_weight - prev_weight
 
-            # Ignore weights older than 5 seconds
-            if now - prev_time > 5:
-                continue
 
             # Validate weight difference and flow rate limits
             flow = weight_diff / time_diff
