@@ -1,0 +1,37 @@
+[project]
+name = "aioacaia"
+version = "0.1.8"
+license = {text = "MIT License"}
+description = "An async implementation of PyAcaia"
+readme = "README.md"
+authors = [{name = "Josef Zweck", email = "24647999+zweckj@users.noreply.github.com"}]
+maintainers = [{name = "Josef Zweck", email = "24647999+zweckj@users.noreply.github.com"}]
+keywords = ["Acaia", "Bluetooth", "api", "async", "client"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "bleak >= 0.20.2",
+]
+requires-python = "~= 3.12"
+
+[project.urls]
+Homepage = "https://github.com/zweckj/aioacaia"
+Repository = "https://github.com/zweckj/aioacaia"
+Documentation = "https://github.com/zweckj/aioacaia"
+
+[project.optional-dependencies]
+dev = [
+    "covdefaults == 2.3.0",
+    "coverage == 7.6.7",
+    "syrupy == 4.7.2",
+    "pytest == 8.3.3",
+    "pytest-asyncio == 0.24.0",
+    "pytest-cov == 6.0.0",
+]
