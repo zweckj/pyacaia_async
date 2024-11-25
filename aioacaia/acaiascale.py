@@ -96,8 +96,9 @@ class AcaiaScale:
         self._weight: float | None = None
 
         # flow rate
-        self.weight_history: deque[tuple[float, float]] = deque(maxlen=20)  # Limit to 20 entries
-
+        self.weight_history: deque[tuple[float, float]] = deque(
+            maxlen=20
+        )  # Limit to 20 entries
 
         # queue
         self._queue: asyncio.Queue = asyncio.Queue()
@@ -143,16 +144,11 @@ class AcaiaScale:
             return 0
 
         return int(self._timer_stop - self._timer_start)
-    
+
     @property
     def flow_rate(self) -> float | None:
-        now = time.time()
+        """Calculate the current flow rate."""
         flows = []
-
-        # Remove old readings (more than 5 seconds)
-        self.weight_history = [
-            (t, w) for t, w in self.weight_history if now - t <= 5
-        ]
 
         if len(self.weight_history) < 4:
             return None
@@ -164,7 +160,6 @@ class AcaiaScale:
 
             time_diff = curr_time - prev_time
             weight_diff = curr_weight - prev_weight
-
 
             # Validate weight difference and flow rate limits
             flow = weight_diff / time_diff
@@ -485,13 +480,21 @@ class AcaiaScale:
             self._weight = msg.value
             timestamp = time.time()
 
-            # Check if weight is increasing before appending
-            if not self.weight_history or msg.value > self.weight_history[-1][1]:
-                self.weight_history.append((timestamp, msg.value)) 
-            elif msg.value < self.weight_history[-1][1] - 1: 
-                # Clear history if weight decreases (1gr margin error)
-                self.weight_history.clear()
-                self.weight_history.append((timestamp, msg.value))
+            # add to weight history for flow rate calculation
+            if msg.value:
+                if self.weight_history:
+                    # Check if weight is increasing before appending
+                    if msg.value > self.weight_history[-1][1]:
+                        self.weight_history.append((timestamp, msg.value))
+                    elif msg.value < self.weight_history[-1][1] - 1:
+                        # Clear history if weight decreases (1gr margin error)
+                        self.weight_history.clear()
+                        self.weight_history.append((timestamp, msg.value))
+                else:
+                    self.weight_history.append((timestamp, msg.value))
+            # Remove old readings (more than 5 seconds)
+            while self.weight_history and (timestamp - self.weight_history[0][0] > 5):
+                self.weight_history.popleft()
 
             if msg.timer_running is not None:
                 self.timer_running = msg.timer_running

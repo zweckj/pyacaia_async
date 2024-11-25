@@ -1,11 +1,15 @@
 [project]
 name = "aioacaia"
-version = "0.1.8"
-license = {text = "MIT License"}
+version = "0.1.9"
+license = { text = "MIT License" }
 description = "An async implementation of PyAcaia"
 readme = "README.md"
-authors = [{name = "Josef Zweck", email = "24647999+zweckj@users.noreply.github.com"}]
-maintainers = [{name = "Josef Zweck", email = "24647999+zweckj@users.noreply.github.com"}]
+authors = [
+    { name = "Josef Zweck", email = "24647999+zweckj@users.noreply.github.com" },
+]
+maintainers = [
+    { name = "Josef Zweck", email = "24647999+zweckj@users.noreply.github.com" },
+]
 keywords = ["Acaia", "Bluetooth", "api", "async", "client"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -16,10 +20,8 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.12",
 ]
-dependencies = [
-    "bleak >= 0.20.2",
-]
-requires-python = "~= 3.12"
+dependencies = ["bleak >= 0.20.2"]
+requires-python = ">= 3.12"
 
 [project.urls]
 Homepage = "https://github.com/zweckj/aioacaia"
