@@ -43,23 +43,22 @@ async def scan(scanner: BleakScanner, timeout) -> list:
 
 async def is_new_scale(address_or_ble_device: str | BLEDevice) -> bool:
     """Check if the scale is a new style scale."""
-    async with BleakClient(address_or_ble_device) as client:
-        try:
-            await client.connect()
-        except BleakDeviceNotFoundError as ex:
-            raise AcaiaDeviceNotFound("Device not found") from ex
-        except (BleakError, Exception) as ex:
-            raise AcaiaError from ex
 
-        characteristics = []
-        for char in client.services.characteristics.values():
-            characteristics.append(char.uuid)
+    try:
+        async with BleakClient(address_or_ble_device) as client:
+            characteristics = []
+            for char in client.services.characteristics.values():
+                characteristics.append(char.uuid)
+    except BleakDeviceNotFoundError as ex:
+        raise AcaiaDeviceNotFound("Device not found") from ex
+    except (BleakError, Exception) as ex:
+        raise AcaiaError(ex) from ex
 
-        if OLD_STYLE_CHAR_ID in characteristics:
-            return False
-        if DEFAULT_CHAR_ID in characteristics:
-            return True
-        raise AcaiaUnknownDevice
+    if OLD_STYLE_CHAR_ID in characteristics:
+        return False
+    if DEFAULT_CHAR_ID in characteristics:
+        return True
+    raise AcaiaUnknownDevice
 
 
 def encode(msg_type: int, payload: bytearray | list[int]) -> bytearray:
