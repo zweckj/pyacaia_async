@@ -462,8 +462,10 @@ class AcaiaScale:
             return
         except AcaiaMessageTooLong as ex:
             _LOGGER.debug("%s: %s", ex.message, ex.bytes_recvd)
+            return
         except AcaiaMessageError as ex:
             _LOGGER.warning("%s: %s", ex.message, ex.bytes_recvd)
+            return
 
         if isinstance(msg, Settings):
             self._device_state = AcaiaDeviceState(
